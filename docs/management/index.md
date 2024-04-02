@@ -320,10 +320,7 @@ auth_oauth2.resource_server_id = new_resource_server_id
 auth_oauth2.issuer = https://my-oauth2-provider.com/realm/rabbitmq
 ```
 
-To enable OAuth 2.0 authentication, apply the following configuration in the management UI assuming the following:
-- OAuth 2.0 Authentication is initiated from RabbitMQ Management UI by clicking on the button "Click here to logon". This is the default mode (`management.oauth_initiated_logon_type = sp_initiated`), also known as *Service-Provider initiated mode*.
-- RabbitMQ uses OAuth 2.0 Authorization Code Flow with PKCE which redirects the user to the configured Authorization Provider (`auth_oauth2.issuer`) to obtain a token
-
+To enable OAuth 2.0 authentication, apply the following configuration in the management UI:
 
 ```ini
 management.oauth_enabled = true
@@ -331,13 +328,18 @@ management.oauth_client_id = rabbit_user_client
 management.oauth_scopes = <SPACE-SEPARATED LIST OF SCOPES. See below>
 ```
 
-- `oauth_enabled` is a mandatory field. When the OAuth 2.0 plugin is previously configured, which it must be, then this parameter enables OAuth 2.0 authentication.
+- `oauth_enabled` is a mandatory field
 - `oauth_client_id` is a mandatory field. It is the OAuth Client Id associated with this RabbitMQ cluster in the OAuth Provider, and it is used to request a token on behalf of the user.
 - `oauth_scopes` is a mandatory field which must be set at all times except in the case when OAuth providers automatically grant scopes associated to the `oauth_client_id`. `oauth_scopes` is a list of space-separated strings that indicate which permissions the application is requesting. Most OAuth providers only issue tokens with the scopes requested during the user authentication. RabbitMQ sends this field along with its `oauth_client_id` during the user authentication. If this field is not set, RabbitMQ defaults to `openid profile`.
 
-With the above configuration, RabbitMQ uses the URL found in `auth_oauth2.issuer` followed by the path `/.well-known/openid-configuration` to download the OpenID Provider configuration. This configuration contains information about other endpoints such as the `jwks_uri` or the `token_endpoint`.
+Given above configuration, when a user visits the Management UI, the following two events take place:
+1. RabbitMQ uses the URL found in `auth_oauth2.issuer` followed by the path `/.well-known/openid-configuration` to download the OpenID Provider configuration. It contains information about other endpoints such as the `jwks_uri` (used to download the keys to validate the token's signature) or the `token_endpoint`. 
 
-Before RabbitMQ 3.13, users always had to configure the Authorization server's URL via the `management.oauth_provider_url` setting. However, since RabbitMQ 3.13, this is only required in some special cases (see [idp-initiated logon](#idp-initiated-logon) for more details).
+:::warning
+If RabbitMQ cannot download the OpenID provider configuration, it shows an error message and OAuth 2.0 authentication is disabled in the Management UI. 
+:::
+
+2. RabbitMQ displays a button with the label "Click here to login". When the user clicks on the button, the Management UI initiates the OAuth 2.0 Authorization Code Flow, which redirects the user to the identity provider to authenticate and get a token. 
 
 ### Configure client secret {#configure-client-secret}
 
