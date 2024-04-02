@@ -48,7 +48,7 @@ This guide covers:
  * How to [enable HTTPS for management UI](#single-listener-https) and its underlying API
  * How this plugin [operates in multi-node clusters](#clustering)
  * How to [disable metric collection](#disable-stats) to use [Prometheus](./prometheus) exclusively for monitoring
- * [OAuth 2](#oauth2-authentication) support:
+ * [Authenticating with OAuth 2](#oauth2-authentication):
     * [Minimum Configuration](#minimum-configuration)
     * [Configure client secret](#configure-client-secret)
     * [Allow Basic and OAuth 2 authentication for Management HTTP API](#allow-basic-auth-for-http-api)
@@ -299,19 +299,24 @@ rabbitmqctl set_user_tags full_access administrator
 
 ## Authenticating with OAuth 2 {#oauth2-authentication}
 
-RabbitMQ can be configured to use [JWT-encoded OAuth 2.0 access tokens](https://github.com/rabbitmq/rabbitmq-server/tree/main/deps/rabbitmq_auth_backend_oauth2) to authenticate client applications and management UI users. When doing so, the management UI does
-not automatically redirect users to authenticate against the OAuth 2 server, this must be configured separately. Currently, **Authorization code flow with PKCE** is tested with the following Authorization servers:
+You can configure RabbitMQ to use [JWT-encoded OAuth 2.0 access tokens](https://github.com/rabbitmq/rabbitmq-server/tree/main/deps/rabbitmq_auth_backend_oauth2) to authenticate client applications. But to use OAuth 2.0 authentication in the Management UI, you have to configure it separately. 
 
-* [UAA](https://github.com/cloudfoundry/uaa)
-* [Keycloak](https://www.keycloak.org/)
-* [Auth0](https://auth0.com/)
-* [Azure](https://docs.microsoft.com/en-us/azure/active-directory/fundamentals/auth-oauth2)
-* [OAuth2 Proxy](https://oauth2-proxy.github.io/oauth2-proxy/)
-* [Okta](https://www.okta.com)
+There are two ways to initiate OAuth 2.0 authentication in the Management UI:
+- *Service-Provided Initiated login*. This is the really the OAuth way to initiate the authentication and the detault way in the Management UI. It uses the [OAuth 2.0 Authorization Code Flow with PKCE](https://datatracker.ietf.org/doc/html/rfc7636) which consists in redirecting users to the configured OAuth 2.0 provider to authenticate and return back to the Management UI with an access token. RabbitMQ Management UI has been tested against these OAuth 2.0 providers:
 
-The first section, called [Minimum configuration](#minimum-configuration) is the minimum configuration required to enable OAuth 2.0 authentication in the Management UI. The following sections explain how to further configure OAuth 2.0 for some use cases.
+  * [UAA](https://github.com/cloudfoundry/uaa)
+  * [Keycloak](https://www.keycloak.org/)
+  * [Auth0](https://auth0.com/)
+  * [Azure](https://docs.microsoft.com/en-us/azure/active-directory/fundamentals/auth-oauth2)
+  * [OAuth2 Proxy](https://oauth2-proxy.github.io/oauth2-proxy/)
+  * [Okta](https://www.okta.com)
+
+- *Identity-Provider Initiated login*. Here, users must come to RabbitMQ authenticated and with an access token. This type of authentication is typical in portals, where users authenticate to the portal, and from the portal and via a hyperlink they access services and/or applications, such as RabbitMQ. When the user requests access to RabbitMQ, the portal forwards the user to RabbitMQ's Management UI with an access token. This type of authentication is covered in the sub-section [Identity-Provider initiated logon](#idp-initiated-logon).
+
 
 ### Minimum configuration {#minimum-configuration}
+
+The first section is the minimum configuration required to enable OAuth 2.0 authentication in the Management UI. The following sections explain how to further configure OAuth 2.0 depending of the use cases.
 
 Given the following configuration of the [OAuth 2.0 plugin](./oauth2):
 
