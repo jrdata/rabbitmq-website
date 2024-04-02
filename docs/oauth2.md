@@ -29,24 +29,24 @@ This guide covers
  * [How it works](#how-it-works)
     * [Prerequisites](#prerequisites)
     * [Authorization Flow](#authorization-flow)
-    * [Variables Configurable in rabbitmq.conf](#variables-configurable)
-    * [Token Validation](#token-validation)
-    * [Token Expiration and Refresh](#token-expiration)
-    * [Scope-to-Permission Translation](#scope-translation)
+    * [Variables configurable in rabbitmq.conf](#variables-configurable)
+    * [Token validation](#token-validation)
+    * [Token expiration and refresh](#token-expiration)
+    * [Scope-to-Permission translation](#scope-translation)
     * [Topic Exchange scopes](#topic-exchange-scopes)
-    * [Scope and Tags](#scope-and-tags)
+    * [Scope and tags](#scope-and-tags)
 
  * [Basic usage](#basic-usage)
-    * [Configure OAuth 2.0 Provider's Issuer](#configure-issuer)
-    * [Configure Signing Keys](#configure-signing-keys)
-    * [Use a Different Token Field for the Scope](#use-different-token-field)
-    * [Preferred Username Claims](#preferred-username-claims)
+    * [Configure OAuth 2.0 provider's issuer](#configure-issuer)
+    * [Configure signing keys](#configure-signing-keys)
+    * [Use a different token field for the scope](#use-different-token-field)
+    * [Preferred username claims](#preferred-username-claims)
     * [Rich Authorization Request](#rich-authorization-request)
 
  * [Advanced usage](#advanced-usage)    
-    * [Use Default OAuth 2.0 Provider](#use-oauth-provider)
-    * [Multiple Resource Servers](#multiple-resource-servers)
-    * [Multiple OAuth Providers](#multiple-oauth-providers)
+    * [Use default OAuth 2.0 provider](#use-oauth-provider)
+    * [Multiple resource servers](#multiple-resource-servers)
+    * [Multiple OAuth 2.0 providers](#multiple-oauth-providers)
 
  * [Examples](#examples)
 
@@ -123,7 +123,7 @@ In chronological order, here is the sequence of events that occur when a client 
 5. RabbitMQ validates that the token has the **audience** claim and whose value matches the `resource_server_id` (this operation can be deactivated by setting `auth_oauth2.verify_aud` to `false`).
 6. RabbitMQ translates the **scopes** found in the token into RabbitMQ **permissions** (the same permissions used in the RabbitMQ's internal database).
 
-### Variables Configurable in rabbitmq.conf {#variables-configurable}
+### Variables configurable in rabbitmq.conf {#variables-configurable}
 
 | Key                                        | Documentation
 |--------------------------------------------|-----------
@@ -208,7 +208,7 @@ Each `auth_oauth2.oauth_providers.<id/index>.` entry has the following settings:
 * `https.hostname_verification`
 
 
-Here is an example which configures two resources (`prod` and `dev`) where each resource is managed by two distinct Identity Providers:
+Here is an example which configures two resources (`prod` and `dev`) where each resource is managed by two distinct identity providers:
 
 ```ini
 auth_oauth2.scope_prefix = rabbitmq.
@@ -253,7 +253,7 @@ It contains the expiration time after which the JWT MUST NOT be accepted for pro
 
 The `aud` ([Audience](https://tools.ietf.org/html/rfc7519#page-9)) identifies the recipients and/or resource_server of the JWT. By default, **RabbitMQ uses this field to validate the token** although you can deactivate it by setting `verify_aud` to `false`.  When it set to `true`, this attribute must either match the `resource_server_id` setting or in case of a list, it must contain the `resource_server_id`.
 
-### Token Expiration and Refresh {#token-expiration}
+### Token expiration and refresh {#token-expiration}
 
 On an existing connection, the token can be refreshed by the [update-secret](/amqp-0-9-1-reference#connection.update-secret) AMQP 0.9.1 method.
 Please check your client whether it supports this method (for example documentation for the [Java client](/client-libraries/java-api-guide#oauth2-refreshing-token)).
@@ -261,7 +261,7 @@ Otherwise the client has to disconnect and reconnect to use a new token.
 
 If the latest token expires on an existing connection, after a limited time the broker will refuse all operations (but it won't disconnect).
 
-### Scope-to-Permission Translation {#scope-translation}
+### Scope-to-Permission translation {#scope-translation}
 
 Scopes are translated into permission grants to RabbitMQ resources for the provided token.
 
@@ -339,7 +339,7 @@ a write permission on all exchanges starting with `x-prod-`, and any routing key
 ```
 
 
-### Scope and Tags {#scope-and-tags}
+### Scope and tags {#scope-and-tags}
 
 Users in RabbitMQ can have [tags associated with them](./access-control#user-tags).
 Tags are used to [control access to the management plugin](./management#permissions).
@@ -420,7 +420,7 @@ or
 
 **VERY IMPORTANT**: Since RabbitMQ 3.13, if `auth_oauth2.https.peer_verification` setting is not set, RabbitMQ sets it to `verify_peer` as long as there are trusted certificates installed in the OS or the user configured `auth_oauth2.https.cacertfile`. 
 
-### Configure Signing Keys {#configure-signing-keys}
+### Configure signing keys {#configure-signing-keys}
 
 Currently, it is very rare you configure RabbitMQ with signing keys, when RabbitMQ can automatically download them as explained in the previous section. However, RabbitMQ supports those edge cases where you need to statically configure the signing keys, or when you need to support symmetric signing keys as opposed to the most widely used asymmetric keys.
 
@@ -497,7 +497,7 @@ If a symmetric key is used, the configuration looks like this:
 ].
 ```
 
-### Use a different token field for the Scope {#use-different-token-field}
+### Use a different token field for the scope {#use-different-token-field}
 
 By default the plugin looks for the `scope` key in the token, you can configure the plugin to also look in other fields using the `extra_scopes_source` setting. Values format accepted are scope as **string** or **list**
 
@@ -627,7 +627,7 @@ Or RabbitMQ user tags:
 - `management`
 - `policymaker`
 
-#### Rich-Permission to Scope translation
+#### Rich-Permission to scope translation
 
 Rich Authorization Request permissions are translated into JWT token scopes that use the
 aforementioned convention using the following algorithm:
@@ -709,7 +709,7 @@ auth_oauth2.oauth_providers.prodkeycloak.https.cacertfile = /opts/certs/prodcace
 
 This latter configuration is more relevant when users present tokens which are issued or signed by different OAuth 2.0 providers. However, one can still use it provided `auth_oauth2.default_oauth_provider` is set.
 
-### Multiple Resource Servers {#multiple-resource-servers}
+### Multiple resource servers {#multiple-resource-servers}
 
 Usually, all users that access a RabbitMQ cluster are registered within the same identity provider. Likewise, all tokens targeting the same RabbitMQ cluster also carry the same *audience*. In other words, all users reference a RabbitMQ cluster with the same resource name which must match the value of the `auth_oauth2.resource_server_id` setting.
 
@@ -739,11 +739,11 @@ The list of supported resource servers is the combination of `auth_oauth2.resour
 There is an [example](./oauth2-examples-multiresource) that demonstrate multiple OAuth 2 resources.
 :::
 
-### Multiple OAuth Providers {#multiple-oauth-providers}
+### Multiple OAuth 2.0 providers {#multiple-oauth-providers}
 
-It only makes sense to set multiple OAuth Providers if there are [multiple resources configured](#multiple-resource-servers).
+It only makes sense to set multiple OAuth 2.0 providers if there are [multiple resources configured](#multiple-resource-servers).
 
-This is the configuration used in the previous section but modified to use multiple OAuth providers:
+This is the configuration used in the previous section but modified to use multiple OAuth 2.0 providers:
 
 ```ini
 auth_oauth2.scope_prefix = rabbitmq.
