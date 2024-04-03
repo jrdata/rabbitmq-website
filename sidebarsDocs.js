@@ -440,13 +440,8 @@ const sidebars = {
             {
               type: 'doc',
               id: 'oauth2',
-              label: 'OAuth 2 Support',
-            },
-            {
-              type: 'doc',
-              id: 'oauth2-examples/index',
-              label: 'OAuth 2 Examples',
-            },
+              label: 'OAuth 2',
+            },            
             {
               type: 'doc',
               id: 'ldap',

@@ -45,8 +45,8 @@ This guide covers
 
  * [Advanced usage](#advanced-usage)    
     * [Use default OAuth 2.0 provider](#use-oauth-provider)
-    * [Multiple resource servers](#multiple-resource-servers)
-    * [Multiple OAuth 2.0 providers](#multiple-oauth-providers)
+    * [Configure multiple resource servers](#multiple-resource-servers)
+    * [Configure multiple OAuth 2.0 providers](#multiple-oauth-providers)
 
  * [Examples](#examples)
 
@@ -75,8 +75,8 @@ Next, let's take a look at the workflows the OAuth 2 plugin supports.
 To use the OAuth 2 plugin, all RabbitMQ nodes must be
 
 1. [Configured to use the rabbit_auth_backend_oauth2 backend](./access-control).
-2. Configured with the resource service ID (`resource_server_id`). The RabbitMQ cluster becomes an OAuth 2.0 resource and this is its identifier.
-3. Configured with issuer URL of the OAuth 2.0 provider, or the JWKS URL, or directly with the signing keys that the OAuth 2.0 provider uses to sign tokens
+2. [Configured with the resource service ID](#resource-server-id) (`resource_server_id`). The RabbitMQ cluster becomes an OAuth 2.0 resource and this is its identifier.
+3. [Configured with issuer URL](#configure-issuer) of the OAuth 2.0 provider, or the JWKS URL, or directly with the signing keys that the OAuth 2.0 provider uses to sign tokens
 
 Here is the minimal configuration to support OAuth 2.0 authentication :
 :::info
@@ -94,7 +94,7 @@ Based on the previous configuration, JWT Tokens presented to RabbitMQ for authen
 2. have a value in the `aud` field that matches `resource_server_id` value
 3. have scopes that must match the `resource_server_id` value, for example `new_resource_server_id.read:*/*`
 
-Also, the `https://my-oauth2-provider.com/realm/rabbitmq/*.well-known/openid-configuration` endpoint must return the OpenID Provider Configuration which includes the JKWS url to download the signing keys.
+Also, the `https://my-oauth2-provider.com/realm/rabbitmq/.well-known/openid-configuration` endpoint must return the OpenID Provider Configuration which includes the JKWS url to download the signing keys.
 :::info
 *.well-known/openid-configuration* is the OpenID standard path for the OpenID Provider Configuration endpoint
 :::
@@ -127,29 +127,54 @@ In chronological order, here is the sequence of events that occur when a client 
 
 | Key                                        | Documentation
 |--------------------------------------------|-----------
-| `auth_oauth2.resource_server_id`           | [The Resource Server ID](#resource-server-id)
-| `auth_oauth2.resource_server_type`         | [The Resource Server Type](#rich-authorization-request)
-| `auth_oauth2.additional_scopes_key`        | Configure the plugin to look in other fields also (maps to `additional_rabbitmq_scopes` in the old format). |
-| `auth_oauth2.scope_prefix`                 | Configure the prefix for all scopes. The default value is `auth_oauth2.resource_server_id` followed by the dot `.` character. |
-| `auth_oauth2.preferred_username_claims`    | List of the JWT claims to look for the username associated with the token separated by commas.
+| `auth_oauth2.resource_server_id`           | The [Resource Server ID](#resource-server-id)
+| `auth_oauth2.resource_server_type`         | The Resource Server Type required when using [Rich Authorization Request](#rich-authorization-request) token format
+| `auth_oauth2.additional_scopes_key`        | Configure the plugin to look for scopes in other fields (maps to `additional_rabbitmq_scopes` in the old format). |
+| `auth_oauth2.scope_prefix`                 | [Configure the prefix for all scopes](#scope-prefix). The default value is `auth_oauth2.resource_server_id` followed by the dot `.` character. |
+| `auth_oauth2.preferred_username_claims`    | [List of the JWT claims](#preferred-username-claims) to look for the username associated with the token separated by commas.
 | `auth_oauth2.default_key`                  | ID of the default signing key.
-| `auth_oauth2.signing_keys`                 | Paths to the signing key files.
-| `auth_oauth2.issuer`                       | The issuer URL of the authorization server that is used to discover endpoints such as `jwk_uri` and others (https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata).
-| `auth_oauth2.jwks_url`                     | The URL of the key server. According to the [JWT Specification](https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.2), the key server URL must be https.
+| `auth_oauth2.signing_keys`                 | Paths to the [signing key files](#signing-key-files).
+| `auth_oauth2.issuer`                       | The [issuer URL](#configure-issuer) of the authorization server that is used to discover endpoints such as `jwk_uri` and others (https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata).
+| `auth_oauth2.jwks_url`                     | The URL of the [JWKS endpoint](#jwks-endpoint). According to the [JWT Specification](https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.2), the endpoint URL must be https.
 | `auth_oauth2.token_endpoint`               | The URL of the OAuth 2.0 Token Endpoint.
-| `auth_oauth2.https.cacertfile`             | Path to a file containing PEM-encoded CA certificates. The CA certificates are used during key server [peer verification](ssl#peer-verification).
+| `auth_oauth2.https.cacertfile`             | Path to a file containing PEM-encoded CA certificates. The CA certificates are used to connect to any of these endpoints: `jwks_url`, `token_endpoint`, or the `issuer`.
 | `auth_oauth2.https.depth`                  | The maximum number of non-self-issued intermediate certificates that may follow the peer certificate in a valid [certification path](ssl#peer-verification-depth). The default value is 10.
 | `auth_oauth2.https.peer_verification`      | Should [peer verification](ssl#peer-verification) be activated. Available values: `verify_none`, `verify_peer`. The default value is `verify_peer` if there are trusted CA installed in the OS or `auth_oauth2.https.cacertfile` is set
 | `auth_oauth2.https.fail_if_no_peer_cert`   | Used together with `auth_oauth2.https.peer_verification = verify_peer`. When set to `true`, TLS connection will be rejected if the client fails to provide a certificate. The default value is `false`.
 | `auth_oauth2.https.hostname_verification`  | Enable wildcard-aware hostname verification for key server. Available values: `wildcard`, `none`. The default value is `none`.
 | `auth_oauth2.algorithms`                   | Restrict [the usable algorithms](https://github.com/potatosalad/erlang-jose#algorithm-support).
 | `auth_oauth2.verify_aud`                   | Whether to verify the [token's `aud`](#token-validation) field or not. The default value is `true`.
-| `auth_oauth2.resource_servers`             | Configure multiple OAuth 2.0 resources.
-| `auth_oauth2.oauth_providers`              | Configure multiple OAuth 2.0 providers.
+| `auth_oauth2.resource_servers`             | [Multiple OAuth 2.0 resources configuration](#multiple-resource-servers-configuration).
+| `auth_oauth2.oauth_providers`              | [Multiple OAuth 2.0 providers configuration](#multiple-oauth-providers-configuration).
 | `auth_oauth2.default_oauth_provider`       | ID of the OAuth 2.0 provider used for the `auth_oauth2.resource_servers`, that did not specify any (via the setting `oauth_provider_id`) or when `auth_oauth2.jwks_url` and `auth_oauth2.issuer` are both missing.
 
 
-Here are two sample configurations. The first one configures two signing key files:
+#### Resource Server ID {#resource-server-id}
+
+A RabbitMQ cluster must have at least one resource server identifier configured. If it has just one resource, this is configured in the `auth_oauth2.resource_server_id` setting and it is **mandatory**. 
+If the RabbitMQ cluster has more than one OAuth resource then they are configured under `auth_oauth2.resource_servers.<index>` and in this case `auth_oauth2.resource_server_id` setting is not mandatory.
+
+RabbitMQ uess the resource server identity for these two purposes:
+- To validate the token's audience (`aud`) whose value must contain the resource server identifier. This validation can be disabled though.
+- To initiate the OAuth 2.0 Authorization Code flow in the Management UI. This is the flow used to authenticate a user and to get its access token. RabbitMQ must include the resource server identifier in the request's attribute called `resource`. 
+
+#### Scope prefix {#scope-prefix}
+
+OAuth 2.0 tokens use scopes to communicate what set of permissions particular client are granted. The scopes are free form strings.
+
+By default, `resource_server_id` followed by the dot (`.`) character is the prefix used for scopes to avoid scope collisions (or unintended overlap).
+However, in some environments, it is not possible to use `resource_server_id` as the prefix for all scopes. For these environments, there is a new setting called `scope_prefix` which overrides the default scope prefix. Empty strings are allowed.
+
+Given the below configuration, the scope associated with the permission `read:*/*` is `api://read:*/*`.
+```ini
+...
+auth_oauth2.scope_prefix = api://
+...
+```
+
+#### Signing keys files {#signing-key-files}
+
+Here is a configuration which configures two signing keys and configures the kid of the default signing key. For more information check the section [Configure Signing keys](#configure-signing-keys).
 
 ```ini
 auth_oauth2.resource_server_id = new_resource_server_id
@@ -163,7 +188,10 @@ auth_oauth2.algorithms.1 = HS256
 auth_oauth2.algorithms.2 = RS256
 ```
 
-The second one which configures a signing key server:
+#### JWKS endpoint {#jwks-endpoint}
+
+Here is a configuration which configures the JWKS endpoint from which RabbitMQ downloads the signing keys using the configured CA certificate and TLS settings. 
+
 ```ini
 auth_oauth2.resource_server_id = new_resource_server_id
 auth_oauth2.jwks_url = https://my-jwt-issuer/jwks.json
@@ -175,6 +203,8 @@ auth_oauth2.https.hostname_verification = wildcard
 auth_oauth2.algorithms.1 = HS256
 auth_oauth2.algorithms.2 = RS256
 ```
+
+#### Multiple Resource Servers configuration {#multiple-resource-servers-configuration}
 
 Each `auth_oauth2.resource_servers.<id/index>.` entry has the following settings:
 
@@ -195,6 +225,10 @@ auth_oauth2.issuer = https://my-idp.com/
 auth_oauth2.resource_servers.1.id = prod
 auth_oauth2.resource_servers.2.id = dev
 ```
+
+See the advanced usage section called [Multiple Resource Servers](#multiple-resource-servers) for more information on how to configure them.
+
+#### Multiple OAuth Providers configuration {#multiple-oauth-providers-configuration}
 
 Each `auth_oauth2.oauth_providers.<id/index>.` entry has the following settings:
 
@@ -220,20 +254,7 @@ auth_oauth2.oauth_providers.idp_prod.issuer = https://idp_prod.com
 auth_oauth2.oauth_providers.idp_dev.issuer = https://idp_dev.com
 ```
 
-### Resource Server ID and scope prefix {#resource-server-id}
-
-OAuth 2.0 tokens use scopes to communicate what set of permissions particular client are granted. The scopes are free form strings.
-
-By default, `resource_server_id` followed by the dot (`.`) character is the prefix used for scopes to avoid scope collisions (or unintended overlap).
-However, in some environments, it is not possible to use `resource_server_id` as the prefix for all scopes. For these environments, there is a new setting called `scope_prefix` which overrides the default scope prefix. Empty strings are allowed.
-
-Given the below configuration, the scope associated with the permission `read:*/*` is `api://read:*/*`.
-```ini
-...
-auth_oauth2.scope_prefix = api://
-...
-```
-
+See the advanced usage section called [Multiple OAuth Providers](#multiple-oauth-providers) for more information on how to configure them.
 
 ### Token validation {#token-validation}
 
@@ -709,7 +730,7 @@ auth_oauth2.oauth_providers.prodkeycloak.https.cacertfile = /opts/certs/prodcace
 
 This latter configuration is more relevant when users present tokens which are issued or signed by different OAuth 2.0 providers. However, one can still use it provided `auth_oauth2.default_oauth_provider` is set.
 
-### Multiple resource servers {#multiple-resource-servers}
+### Configure multiple resource servers {#multiple-resource-servers}
 
 Usually, all users that access a RabbitMQ cluster are registered within the same identity provider. Likewise, all tokens targeting the same RabbitMQ cluster also carry the same *audience*. In other words, all users reference a RabbitMQ cluster with the same resource name which must match the value of the `auth_oauth2.resource_server_id` setting.
 
@@ -739,7 +760,7 @@ The list of supported resource servers is the combination of `auth_oauth2.resour
 There is an [example](./oauth2-examples-multiresource) that demonstrate multiple OAuth 2 resources.
 :::
 
-### Multiple OAuth 2.0 providers {#multiple-oauth-providers}
+### Configure multiple OAuth 2.0 providers {#multiple-oauth-providers}
 
 It only makes sense to set multiple OAuth 2.0 providers if there are [multiple resources configured](#multiple-resource-servers).
 
